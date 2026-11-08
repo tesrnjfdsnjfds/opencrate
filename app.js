@@ -47,24 +47,25 @@ function renderGenres(){
   const b=document.createElement('button');b.className='tag';b.disabled=busy;b.textContent=pretty(tag);b.setAttribute('aria-pressed',selected.has(tag));
   b.onclick=()=>{selected.has(tag)?selected.delete(tag):selected.add(tag);filtersChanged();};$('tags').append(b);
  }
- if(!$('tags').children.length) $('tags').textContent='No matching genres in this catalog.';
+ if(!$('tags').children.length) $('tags').textContent='No matches';
  $('all').setAttribute('aria-pressed',!selected.size);
+ if($('selection-count')) $('selection-count').textContent=selected.size || '';
  $('filter-note').textContent=selected.size?`${selected.size} genre${selected.size===1?'':'s'} selected · matches any selected genre.`:'Every genre is in play.';
 }
 function filtersChanged(){rebuildPool=true;recentIndices.clear();recentQueue=[];renderGenres();next();}
-function updateSave(){ $('save').textContent=current && saved.some(r=>key(r)===key(current))?'♥ Saved':'♡ Save';$('saved-count').textContent=saved.length; }
+function updateSave(){ const active=!!current && saved.some(r=>key(r)===key(current));$('save').textContent=active?'♥':'♡';$('save').setAttribute('aria-pressed',active);$('save').setAttribute('aria-label',active?'Unsave release':'Save release');$('save').title=active?'Unsave release':'Save release';$('saved-count').textContent=saved.length || ''; }
 function show(r){
  current=r;$('title').textContent=r.title;$('artist').textContent=r.artist;$('release-tag').textContent=r.tags.map(pretty).join(' / ');
  $('cover').hidden=false;$('cover-empty').hidden=true;$('cover-empty').style.display='none';$('cover').src=`https://f4.bcbits.com/img/a${r.art}_10.jpg`;$('cover').alt=`Cover of ${r.title}`;
  $('cover').onerror=()=>{$('cover').hidden=true;$('cover-empty').style.display='grid';};
- const iframe=document.createElement('iframe');iframe.title=`Bandcamp player: ${r.title}`;iframe.src=`https://bandcamp.com/EmbeddedPlayer/${r.type}=${r.id}/size=large/bgcol=1c1f1b/linkcol=c6ef83/artwork=none/tracklist=false/transparent=true/`;iframe.setAttribute('allow','autoplay');$('player').replaceChildren(iframe);
+ const iframe=document.createElement('iframe');iframe.title=`Bandcamp player: ${r.title}`;iframe.src=`https://bandcamp.com/EmbeddedPlayer/${r.type}=${r.id}/size=large/bgcol=111111/linkcol=aaaaaa/artwork=none/tracklist=false/transparent=true/`;iframe.setAttribute('allow','autoplay');$('player').replaceChildren(iframe);
  $('bandcamp').href=r.url;$('bandcamp').hidden=false;$('save').disabled=false;$('previous').disabled=position<=0;$('sequence').textContent=String(position+1).padStart(3,'0');
- $('status').textContent=`${poolCount.toLocaleString()} releases in your crate · N for next`;
+ $('status').textContent='';
  history=[r,...history.filter(x=>key(x)!==key(r))].slice(0,100);persist('opencrate-history',history);updateSave();renderLists();
 }
 async function next(){
  if(busy || !total)return;
- setBusy(true);$('status').textContent='Loading your next discovery…';
+ setBusy(true);$('status').textContent='Loading…';
  try {
   if(rebuildPool){const indices=await buildPool();activeIndices=indices;poolCount=indices===null?total:indices.length;rebuildPool=false;}
   if(!poolCount){$('status').textContent='No releases match these genres.';return;}
@@ -85,7 +86,7 @@ async function next(){
 }
 function jump(r){if(busy)return;trail=trail.slice(0,position+1);trail.push(r);position=trail.length-1;show(r);}
 function list(target, rows){
- $(target).replaceChildren();if(!rows.length){$(target).textContent='Nothing here yet. Keep exploring.';return;}
+ $(target).replaceChildren();if(!rows.length){$(target).textContent='Empty';return;}
  for(const r of rows){const row=document.createElement('div');row.className='list-row';const img=document.createElement('img');img.src=`https://f4.bcbits.com/img/a${r.art}_7.jpg`;img.alt='';img.loading='lazy';const b=document.createElement('button');b.disabled=busy;b.textContent=r.title;const s=document.createElement('small');s.textContent=r.artist;b.append(s);b.onclick=()=>jump(r);const a=document.createElement('a');a.textContent='Bandcamp ↗';a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';row.append(img,b,a);$(target).append(row);}
 }
 function renderLists(){list('saved-list',saved);list('history-list',history.slice(0,20));$('history-count').textContent=Math.min(history.length,20);}
